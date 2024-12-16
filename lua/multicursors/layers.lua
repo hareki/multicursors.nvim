@@ -99,7 +99,21 @@ local generate_hints = function(config, heads, mode)
         end
     end)
 
-    local str = ' MultiCursor: ' .. mode .. ' mode'
+    local float_opts = config.hint_config.float_opts
+
+    local top_bottom_padding = float_opts.padding[1] or 0
+    local left_right_padding = float_opts.padding[2] or 0
+
+    local has_border = float_opts.border
+        and float_opts.border ~= ''
+        and float_opts.border ~= 'none'
+
+    local vertical_pad_str = string.rep('\n', top_bottom_padding)
+    -- Neovim automatically adds 1 horizontal padding when border is enabled
+    local horizontal_pad_str =
+        string.rep(' ', left_right_padding - (has_border and 1 or 0))
+
+    local str = vertical_pad_str
 
     local max_hint_length = config.generate_hints.config.max_hint_length
     local columns = config.generate_hints.config.column_count
@@ -118,9 +132,13 @@ local generate_hints = function(config, heads, mode)
         end
 
         if line ~= '' then
-            str = str .. '\n' .. line
+            line = horizontal_pad_str .. line .. horizontal_pad_str
+            str = str .. line .. '\n'
         end
     end
+
+    str = str .. vertical_pad_str
+    float_opts.padding = nil
 
     return str
 end
