@@ -50,21 +50,94 @@ end
 --- when necessary adds padding or cuts the hint for aligning
 ---@param head Head
 ---@param max_hint_length integer
+---@param hint_separator string
 ---@return string
-local function get_hint(head, max_hint_length)
+local function get_hint(head, max_hint_length, hint_separator)
     if not head[3].desc or head[3].desc == '' then
         return ''
     end
 
-    local hint = ' _' .. head[1] .. '_ : ' .. head[3].desc .. '^'
-    local length = vim.fn.strdisplaywidth(hint)
-    if length < max_hint_length then
-        hint = hint .. string.rep(' ', max_hint_length - length)
-    elseif length > max_hint_length then
-        hint = string.sub(hint, 0, max_hint_length - 5) .. '... '
+    local key = tostring(head[1] or '')
+    local desc = tostring(head[3].desc or '')
+
+    -- Visible (what the user actually sees) vs markup (what we render)
+    local left_visible = key .. ' ' .. hint_separator .. ' '
+    local left_markup = '_' .. key .. '_ ' .. hint_separator .. ' '
+
+    local caret_width = 1 -- reserve for trailing '^'
+    local left_w = vim.fn.strdisplaywidth(left_visible)
+    local available = max_hint_length - caret_width - left_w
+    if available < 0 then
+        available = 0
     end
 
-    return hint
+    local ellipsis = '... '
+    local need_ellipsis = vim.fn.strdisplaywidth(desc) > available
+    local target_w = need_ellipsis
+            and (available - vim.fn.strdisplaywidth(ellipsis))
+        or available
+    if target_w < 0 then
+        target_w = 0
+    end
+
+    -- width-aware cut on desc
+    local lo, hi = 0, vim.fn.strcharlen(desc)
+    local cut = ''
+    while lo <= hi do
+        local mid = math.floor((lo + hi) / 2)
+        local part = vim.fn.strcharpart(desc, 0, mid)
+        local w = vim.fn.strdisplaywidth(part)
+        if w <= target_w then
+            cut = part
+            lo = mid + 1
+        else
+            hi = mid - 1
+        end
+    end
+
+    local rendered = left_markup
+        .. cut
+        .. (need_ellipsis and ellipsis or '')
+        .. '^'
+
+    -- pad to exact column width using *visible* width
+    local visible_w = left_w
+        + vim.fn.strdisplaywidth(cut .. (need_ellipsis and ellipsis or ''))
+        + caret_width
+    if visible_w < max_hint_length then
+        rendered = rendered .. string.rep(' ', max_hint_length - visible_w)
+    end
+
+    return rendered
+end
+
+local function is_non_special(s)
+    return s:match '^[%a%d]+$' ~= nil
+end
+
+-- Case-insensitive alpha compare; when equal ignoring case, lowercase wins.
+local function alpha_compare(left, right)
+    local leftLower, rightLower = left:lower(), right:lower()
+    if leftLower ~= rightLower then
+        return leftLower < rightLower
+    end
+
+    -- Same ignoring case → prefer lowercase at the first case-only difference
+    local i, lenLeft, lenRight = 1, #left, #right
+    while i <= lenLeft and i <= lenRight do
+        local charLeft, charRight = left:sub(i, i), right:sub(i, i)
+        if charLeft:lower() == charRight:lower() and charLeft ~= charRight then
+            if charLeft:match '%l' and charRight:match '%u' then
+                return true
+            end
+            if charLeft:match '%u' and charRight:match '%l' then
+                return false
+            end
+        end
+        i = i + 1
+    end
+
+    return left < right
 end
 
 -- Generates hints based on the configuration and input parameters.
@@ -85,46 +158,72 @@ local generate_hints = function(config, heads, mode)
     local vertical_padding = padding[1]
     local horizontal_padding = padding[2]
 
-    table.sort(heads, function(a, b)
-        -- put the head with empty desc at the end
-        if a[3].desc == '' then
-            return false
-        end
-
-        -- put the special characters at the end
-        local is_special_a = not string.match(a[1], '[%a%d]')
-        local is_special_b = not string.match(b[1], '[%a%d]')
-        if is_special_a and not is_special_b then
-            return false
-        elseif not is_special_a and is_special_b then
-            return true
-        else
-            return a[1] < b[1]
-        end
-    end)
-
     local str = ''
 
     local max_hint_length = config.generate_hints.config.max_hint_length
+    local col_gap = 1 -- minimal space between columns
+
+    local total_width = vim.api.nvim_get_option_value('columns', {})
+        - horizontal_padding * 2
     local columns = config.generate_hints.config.column_count
-        or math.floor(
-            (vim.api.nvim_get_option_value('columns', {}) - horizontal_padding * 2) / max_hint_length
+        or math.max(
+            1,
+            math.floor((total_width + col_gap) / (max_hint_length + col_gap))
         )
 
+    -- column-based ordering: sort by key length, then:
+    --  - non-special (letters/digits) before special
+    --  - case-insensitive alphabetical
+    --  - if equal ignoring case, lowercase comes before uppercase
+    table.sort(heads, function(left, right)
+        local keyLeft = tostring(left[1] or '')
+        local keyRight = tostring(right[1] or '')
+
+        local widthLeft = vim.fn.strdisplaywidth(keyLeft)
+        local widthRight = vim.fn.strdisplaywidth(keyRight)
+        if widthLeft ~= widthRight then
+            return widthLeft < widthRight
+        end
+
+        local leftIsNonSpecial = is_non_special(keyLeft)
+        local rightIsNonSpecial = is_non_special(keyRight)
+        if leftIsNonSpecial ~= rightIsNonSpecial then
+            return leftIsNonSpecial -- non-special before special
+        end
+
+        return alpha_compare(keyLeft, keyRight)
+    end)
+
+    local rows = math.max(1, math.ceil(#heads / columns))
+    local hint_separator = config.generate_hints.config.hint_separator
+
     local line
-    for i = 0, math.floor(#heads / columns) do
+    for i = 0, rows - 1 do
         line = ''
         for j = 1, columns, 1 do
-            if heads[(i * columns) + j] then
-                line = line
-                    .. get_hint(heads[(i * columns) + j], max_hint_length)
+            local idx = ((j - 1) * rows) + (i + 1) -- column-major index
+            local h = heads[idx]
+            if h then
+                line = line .. get_hint(h, max_hint_length, hint_separator)
+
+                -- add gap only if there is another visible cell to the right in this row
+                local has_next = false
+                for k = j + 1, columns do
+                    local idx2 = ((k - 1) * rows) + (i + 1)
+                    if heads[idx2] then
+                        has_next = true
+                        break
+                    end
+                end
+                if has_next then
+                    line = line .. string.rep(' ', col_gap)
+                end
             end
         end
 
         if line ~= '' then
-            local padded_line = string.rep(' ', horizontal_padding)
-                .. line
-                .. string.rep(' ', horizontal_padding)
+            local padding_line = string.rep(' ', horizontal_padding)
+            local padded_line = padding_line .. line .. padding_line
 
             if str == '' then
                 str = padded_line
@@ -172,7 +271,7 @@ L.generate_normal_heads = function(config)
     end
 
     heads[#heads + 1] = {
-        '<esc>',
+        '<Esc>',
         nil,
         { desc = 'exit', exit = true, nowait = config.nowait },
     }
