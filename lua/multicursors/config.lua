@@ -158,6 +158,7 @@ local M = {
         insert = true,
         extend = true,
         config = {
+            hint_separator = ':',
             padding = { 0, 0 },
             -- determines how many columns are used to display the hints. If you leave this option nil, the number of columns will depend on the size of your window.
             column_count = nil,
