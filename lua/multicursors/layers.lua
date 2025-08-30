@@ -81,6 +81,10 @@ local generate_hints = function(config, heads, mode)
         return config.generate_hints[mode](heads)
     end
 
+    local padding = config.generate_hints.config.padding
+    local vertical_padding = padding[1]
+    local horizontal_padding = padding[2]
+
     table.sort(heads, function(a, b)
         -- put the head with empty desc at the end
         if a[3].desc == '' then
@@ -104,7 +108,7 @@ local generate_hints = function(config, heads, mode)
     local max_hint_length = config.generate_hints.config.max_hint_length
     local columns = config.generate_hints.config.column_count
         or math.floor(
-            vim.api.nvim_get_option_value('columns', {}) / max_hint_length
+            (vim.api.nvim_get_option_value('columns', {}) - horizontal_padding * 2) / max_hint_length
         )
 
     local line
@@ -118,12 +122,22 @@ local generate_hints = function(config, heads, mode)
         end
 
         if line ~= '' then
+            local padded_line = string.rep(' ', horizontal_padding)
+                .. line
+                .. string.rep(' ', horizontal_padding)
+
             if str == '' then
-                str = line
+                str = padded_line
             else
-                str = str .. '\n' .. line
+                str = str .. '\n' .. padded_line
             end
         end
+    end
+
+    if vertical_padding > 0 and str ~= '' then
+        local top_padding = string.rep('\n', vertical_padding)
+        local bottom_padding = top_padding .. '\n'
+        str = top_padding .. str .. bottom_padding
     end
 
     return str
