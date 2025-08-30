@@ -295,6 +295,9 @@ M.move_cursor = function(pos, current)
 end
 
 M.exit = function()
+    vim.api.nvim_exec_autocmds('User', {
+        pattern = 'MultiCursorExit',
+    })
     M.clear_selections()
     vim.b.MultiCursorMultiline = nil
     vim.b.MultiCursorPattern = nil
