@@ -99,7 +99,7 @@ local generate_hints = function(config, heads, mode)
         end
     end)
 
-    local str = ' MultiCursor: ' .. mode .. ' mode'
+    local str = ''
 
     local max_hint_length = config.generate_hints.config.max_hint_length
     local columns = config.generate_hints.config.column_count
@@ -118,11 +118,29 @@ local generate_hints = function(config, heads, mode)
         end
 
         if line ~= '' then
-            str = str .. '\n' .. line
+            if str == '' then
+                str = line
+            else
+                str = str .. '\n' .. line
+            end
         end
     end
 
     return str
+end
+
+--- Creates hint configuration for a given mode
+---@param config Config
+---@param mode string
+---@return table
+local create_hint_config = function(config, mode)
+    local default_config = {
+        float_opts = {
+            title = ' MC ' .. mode .. ' ',
+            title_pos = 'center',
+        },
+    }
+    return vim.tbl_deep_extend('keep', config.hint_config or {}, default_config)
 end
 
 ---
@@ -207,7 +225,7 @@ L.create_normal_hydra = function(config)
                 end
             end,
             color = 'pink',
-            hint = config.hint_config,
+            hint = create_hint_config(config, 'Normal'),
         },
         mode = 'n',
         heads = heads,
@@ -237,7 +255,7 @@ L.create_insert_hydra = function(config)
                 end, 20)
             end,
             color = 'pink',
-            hint = config.hint_config,
+            hint = create_hint_config(config, 'Insert'),
         },
         heads = heads,
     }
@@ -269,7 +287,7 @@ L.create_extend_hydra = function(config)
                 end, 20)
             end,
             color = 'pink',
-            hint = config.hint_config,
+            hint = create_hint_config(config, 'Extend'),
         },
         heads = heads,
     }
