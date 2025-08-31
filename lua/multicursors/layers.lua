@@ -117,20 +117,23 @@ end
 
 -- Case-insensitive alpha compare; when equal ignoring case, lowercase wins.
 local function alpha_compare(left, right)
-    local leftLower, rightLower = left:lower(), right:lower()
-    if leftLower ~= rightLower then
-        return leftLower < rightLower
+    local left_lower, right_lower = left:lower(), right:lower()
+    if left_lower ~= right_lower then
+        return left_lower < right_lower
     end
 
     -- Same ignoring case → prefer lowercase at the first case-only difference
-    local i, lenLeft, lenRight = 1, #left, #right
-    while i <= lenLeft and i <= lenRight do
-        local charLeft, charRight = left:sub(i, i), right:sub(i, i)
-        if charLeft:lower() == charRight:lower() and charLeft ~= charRight then
-            if charLeft:match '%l' and charRight:match '%u' then
+    local i, len_left, len_right = 1, #left, #right
+    while i <= len_left and i <= len_right do
+        local char_left, char_right = left:sub(i, i), right:sub(i, i)
+        if
+            char_left:lower() == char_right:lower()
+            and char_left ~= char_right
+        then
+            if char_left:match '%l' and char_right:match '%u' then
                 return true
             end
-            if charLeft:match '%u' and charRight:match '%l' then
+            if char_left:match '%u' and char_right:match '%l' then
                 return false
             end
         end
@@ -176,22 +179,22 @@ local generate_hints = function(config, heads, mode)
     --  - case-insensitive alphabetical
     --  - if equal ignoring case, lowercase comes before uppercase
     table.sort(heads, function(left, right)
-        local keyLeft = tostring(left[1] or '')
-        local keyRight = tostring(right[1] or '')
+        local key_left = tostring(left[1] or '')
+        local key_right = tostring(right[1] or '')
 
-        local widthLeft = vim.fn.strdisplaywidth(keyLeft)
-        local widthRight = vim.fn.strdisplaywidth(keyRight)
-        if widthLeft ~= widthRight then
-            return widthLeft < widthRight
+        local width_left = vim.fn.strdisplaywidth(key_left)
+        local width_right = vim.fn.strdisplaywidth(key_right)
+        if width_left ~= width_right then
+            return width_left < width_right
         end
 
-        local leftIsNonSpecial = is_non_special(keyLeft)
-        local rightIsNonSpecial = is_non_special(keyRight)
+        local leftIsNonSpecial = is_non_special(key_left)
+        local rightIsNonSpecial = is_non_special(key_right)
         if leftIsNonSpecial ~= rightIsNonSpecial then
             return leftIsNonSpecial -- non-special before special
         end
 
-        return alpha_compare(keyLeft, keyRight)
+        return alpha_compare(key_left, key_right)
     end)
 
     local rows = math.max(1, math.ceil(#heads / columns))
