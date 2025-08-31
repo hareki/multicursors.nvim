@@ -60,12 +60,11 @@ local function get_hint(head, max_hint_length, hint_separator)
     local key = tostring(head[1] or '')
     local desc = tostring(head[3].desc or '')
 
-    -- Visible (what the user actually sees) vs markup (what we render)
+    -- Visible (for width math) vs markup (what Hydra renders)
     local left_visible = key .. ' ' .. hint_separator .. ' '
-    local left_markup = '_' .. key .. '_ ' .. hint_separator .. ' '
-
     local caret_width = 1 -- reserve for trailing '^'
     local left_w = vim.fn.strdisplaywidth(left_visible)
+
     local available = max_hint_length - caret_width - left_w
     if available < 0 then
         available = 0
@@ -94,6 +93,10 @@ local function get_hint(head, max_hint_length, hint_separator)
             hi = mid - 1
         end
     end
+
+    -- Escape '^' only in the key token for Hydra's docstring
+    local key_markup = key:gsub('%^', '\\^') -- becomes "\^" inside _..._
+    local left_markup = '_' .. key_markup .. '_ ' .. hint_separator .. ' '
 
     local rendered = left_markup
         .. cut
