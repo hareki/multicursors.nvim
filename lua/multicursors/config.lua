@@ -141,6 +141,8 @@ local M = {
     normal_keys = normal_keys,
     insert_keys = insert_keys,
     extend_keys = extend_keys,
+    -- set it to false to disable all the default mappings above
+    default_mappings = true,
     -- see :help hydra-config.hint
     hint_config = {
         float_opts = {
