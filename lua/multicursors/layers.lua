@@ -286,7 +286,7 @@ L.generate_normal_heads = function(config)
                 insert_mode.insert(config)
             end)
         end,
-        { desc = 'insert mode', exit = true, nowait = config.nowait },
+        { desc = 'Insert mode', exit = true, nowait = config.nowait },
     }
 
     heads[#heads + 1] = {
@@ -296,7 +296,7 @@ L.generate_normal_heads = function(config)
                 normal_mode.change(config)
             end)
         end,
-        { desc = 'change mode', exit = true, nowait = config.nowait },
+        { desc = 'Change mode', exit = true, nowait = config.nowait },
     }
 
     heads[#heads + 1] = {
@@ -306,7 +306,7 @@ L.generate_normal_heads = function(config)
                 insert_mode.append(config)
             end)
         end,
-        { desc = 'append mode', exit = true, nowait = config.nowait },
+        { desc = 'Append mode', exit = true, nowait = config.nowait },
     }
 
     heads[#heads + 1] = {
@@ -316,7 +316,7 @@ L.generate_normal_heads = function(config)
             L.create_extend_hydra(config)
             L.extend_hydra:activate()
         end,
-        { desc = 'extend mode', exit = true, nowait = config.nowait },
+        { desc = 'Extend mode', exit = true, nowait = config.nowait },
     }
 
     return heads
