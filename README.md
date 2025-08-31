@@ -50,6 +50,8 @@ Install with your preferred package manager:
     normal_keys = normal_keys,
     insert_keys = insert_keys,
     extend_keys = extend_keys,
+    -- set it to false to disable all the default mappings above
+    default_mappings = true,
     -- see :help hydra-config.hint
     hint_config = {
         float_opts = {
@@ -67,7 +69,11 @@ Install with your preferred package manager:
         insert = true,
         extend = true,
         config = {
-             -- determines how many columns are used to display the hints. If you leave this option nil, the number of columns will depend on the size of your window.
+            -- character used to separate key from description in hints
+            hint_separator = ':',
+            -- padding around hint window as {vertical, horizontal}
+            padding = { 0, 0 },
+            -- determines how many columns are used to display the hints. If you leave this option nil, the number of columns will depend on the size of your window.
             column_count = nil,
             -- maximum width of a column.
             max_hint_length = 25,
