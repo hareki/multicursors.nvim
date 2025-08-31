@@ -90,6 +90,12 @@ end
 
 ---@param opts Config
 M.setup = function(opts)
+    if opts.default_mappings == false then
+        default_config.normal_keys = {}
+        default_config.insert_keys = {}
+        default_config.extend_keys = {}
+    end
+
     local config = vim.tbl_deep_extend('keep', opts, default_config)
     vim.g.MultiCursorDebug = config.DEBUG_MODE
 
